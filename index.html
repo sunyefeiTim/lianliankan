@@ -9,7 +9,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/tiles/strawberry.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@400;700&display=swap">
+  <!-- 字体在后台加载，不挡住页面显示；连不上 Google 时用系统字体 -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@400;700&display=swap" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
