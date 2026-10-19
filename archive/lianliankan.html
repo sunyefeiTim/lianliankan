@@ -1,0 +1,399 @@
+<title>果果连连看</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@400;700;900&display=swap">
+<style>
+/* Layout: one-screen arcade cabinet — header strip (level · score · time bar), the board fills the middle, a row of chunky buttons below. Single deliberate night-blue look. */
+:root{
+  --sky-1:#123a7a; --sky-2:#0a1f4a; --sky-3:#061430;
+  --gold:#ffcf3f; --gold-deep:#d98a00;
+  --ink:#fff7e0; --ink-dim:#b9c8ea;
+  --tile-face:#fffaf0; --tile-face-2:#f2e3bd; --tile-edge:#c8964a; --tile-side:#8a5f22;
+  --select:#ff7a1a; --hint:#38e1ff; --line:#fff36b;
+  --panel:rgba(5,16,42,.62); --panel-line:rgba(140,180,255,.25);
+  --f-display:"ZCOOL KuaiLe","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--sky-3);color:var(--ink);font-family:var(--f-body);overflow:hidden;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.app{height:100%;display:flex;flex-direction:column;gap:10px;
+  padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:
+    radial-gradient(1200px 500px at 50% -10%, rgba(120,180,255,.35), transparent 60%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,.025) 0 14px, transparent 14px 28px),
+    linear-gradient(180deg,var(--sky-1),var(--sky-2) 55%,var(--sky-3));
+  box-sizing:border-box}
+header{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+h1{margin:0;font-family:var(--f-display);font-weight:400;font-size:clamp(22px,3.4vw,34px);line-height:1;
+  color:var(--gold);letter-spacing:.04em;
+  text-shadow:0 2px 0 var(--gold-deep),0 4px 0 #6b3a00,0 6px 10px rgba(0,0,0,.5)}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.chip{background:var(--panel);border:1px solid var(--panel-line);border-radius:999px;padding:4px 12px;
+  font-size:13px;color:var(--ink-dim);white-space:nowrap}
+.chip b{color:var(--ink);font-variant-numeric:tabular-nums;font-size:15px;margin-left:4px}
+.chip.mode b{color:var(--hint)}
+.timebar{flex:1 1 220px;min-width:160px;display:flex;align-items:center;gap:8px}
+.timebar .track{flex:1;height:14px;border-radius:8px;background:rgba(0,0,0,.45);border:1px solid var(--panel-line);overflow:hidden;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.6)}
+.timebar .fill{height:100%;width:100%;border-radius:8px;transform-origin:left;
+  background:linear-gradient(180deg,rgba(255,255,255,.45),transparent 55%),var(--tfill,#3fd46a);transition:background-color .3s}
+.timebar .t{font-variant-numeric:tabular-nums;font-weight:700;min-width:3.2em;text-align:right}
+.timebar.low .t{color:#ff6b5a;animation:blink .5s steps(2) infinite}
+@keyframes blink{50%{opacity:.35}}
+
+.wrap{flex:1;min-height:0;position:relative;display:grid;place-items:center}
+.board{position:relative;border-radius:14px;
+  background:radial-gradient(ellipse at center, rgba(40,90,180,.35), rgba(5,20,55,.5));
+  box-shadow:inset 0 0 0 2px rgba(150,190,255,.18), 0 20px 40px rgba(0,0,0,.35)}
+.tile{position:absolute;box-sizing:border-box;display:grid;place-items:center;cursor:pointer;
+  width:calc(var(--cell) - 5px);height:calc(var(--cell) - 6px);
+  border-radius:calc(var(--cell) * .16);
+  font-size:calc(var(--cell) * .58);line-height:1;
+  background:linear-gradient(150deg,var(--tile-face) 30%,var(--tile-face-2));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.9), inset 0 -3px 0 rgba(160,110,40,.18),
+    1px 2px 0 var(--tile-edge), 2px 4px 0 var(--tile-side), 3px 6px 8px rgba(0,0,0,.4);
+  transition:left .28s cubic-bezier(.3,1.4,.6,1), top .28s cubic-bezier(.3,1.4,.6,1), transform .12s, box-shadow .12s, filter .12s}
+.tile span{filter:drop-shadow(0 1px 0 rgba(0,0,0,.15));pointer-events:none}
+@media (hover:hover){.tile:hover{filter:brightness(1.06)}}
+.tile.sel{transform:translateY(-3px) scale(1.04);
+  background:linear-gradient(150deg,#fff4d0,#ffc96a);
+  box-shadow:0 0 0 3px var(--select),0 0 16px 4px rgba(255,122,26,.7),2px 5px 0 var(--tile-side),3px 8px 12px rgba(0,0,0,.45)}
+.tile.hint{animation:hintpulse .6s ease-in-out infinite alternate}
+@keyframes hintpulse{to{box-shadow:0 0 0 3px var(--hint),0 0 18px 6px rgba(56,225,255,.7),2px 4px 0 var(--tile-side)}}
+.tile.pop{pointer-events:none;animation:pop .32s ease-in forwards}
+@keyframes pop{0%{transform:scale(1.1);filter:brightness(1.6)}60%{transform:scale(1.25);opacity:1}100%{transform:scale(.2) rotate(25deg);opacity:0}}
+.tile.shake{animation:shake .25s}
+@keyframes shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+svg.lines{position:absolute;inset:0;pointer-events:none;overflow:visible}
+svg.lines polyline{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.float{position:absolute;pointer-events:none;font-family:var(--f-display);color:var(--gold);font-size:22px;white-space:nowrap;
+  text-shadow:0 2px 0 #7a3c00,0 0 8px rgba(0,0,0,.6);animation:floatup .9s ease-out forwards;transform:translate(-50%,-50%)}
+@keyframes floatup{to{transform:translate(-50%,-160%);opacity:0}}
+.spark{position:absolute;width:6px;height:6px;border-radius:50%;pointer-events:none;background:var(--line);
+  box-shadow:0 0 8px var(--line);animation:spark .5s ease-out forwards}
+@keyframes spark{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+
+.controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{font-family:var(--f-display);font-size:18px;color:#4a2400;border:0;cursor:pointer;position:relative;
+  padding:8px 18px 10px;border-radius:12px;
+  background:linear-gradient(180deg,#ffe98a,var(--gold) 55%,#f2a400);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 4px 0 #a35b00,0 6px 10px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s}
+.btn:active{transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 1px 0 #a35b00,0 2px 4px rgba(0,0,0,.4)}
+.btn.blue{color:#fff;background:linear-gradient(180deg,#7ec4ff,#3a8cf0 55%,#1f5fc4);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 4px 0 #123a85,0 6px 10px rgba(0,0,0,.4)}
+.btn.blue:active{box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 1px 0 #123a85}
+.btn.off{filter:grayscale(.85) brightness(.8)}
+.btn:disabled{filter:grayscale(1) brightness(.7);cursor:not-allowed}
+.btn:focus-visible,.tile:focus-visible{outline:3px solid var(--hint);outline-offset:3px}
+.badge{position:absolute;top:-8px;right:-8px;min-width:20px;height:20px;border-radius:10px;background:#e8312a;color:#fff;
+  font:700 12px/20px var(--f-body);text-align:center;box-shadow:0 2px 0 #7a0f0b}
+
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(3,10,30,.72);backdrop-filter:blur(3px);z-index:10;border-radius:14px}
+.card{text-align:center;max-width:min(92%,420px);padding:26px 26px 22px;border-radius:20px;
+  background:linear-gradient(180deg,#1d4c9c,#0f2a62);border:2px solid rgba(160,200,255,.4);
+  box-shadow:0 0 0 6px rgba(255,207,63,.25),0 20px 50px rgba(0,0,0,.6);display:grid;gap:14px;justify-items:center}
+.card h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:36px;color:var(--gold);
+  text-shadow:0 3px 0 #7a3c00;text-wrap:balance}
+.card p{margin:0;color:var(--ink-dim);line-height:1.7;font-size:14px;max-width:34ch}
+.card .big{font-family:var(--f-display);font-size:28px;color:var(--ink)}
+.demo{font-size:34px;letter-spacing:6px}
+@media (prefers-reduced-motion:reduce){.tile{transition:none}.tile.hint{animation:none;box-shadow:0 0 0 3px var(--hint)}.float,.spark{animation-duration:.01s}}
+@media (max-width:560px){.btn{font-size:16px;padding:7px 12px 9px}h1{font-size:22px}.chip{padding:3px 9px}}
+</style>
+
+<div class="app">
+  <header>
+    <h1>果果连连看</h1>
+    <div class="stats">
+      <span class="chip">关卡<b id="lv">1</b></span>
+      <span class="chip">得分<b id="sc">0</b></span>
+      <span class="chip mode">玩法<b id="md">经典</b></span>
+    </div>
+    <div class="timebar" id="tb"><div class="track"><div class="fill" id="tf"></div></div><span class="t" id="tt">0</span></div>
+  </header>
+  <div class="wrap" id="wrap">
+    <div class="board" id="board"></div>
+    <div class="overlay" id="ov"></div>
+  </div>
+  <div class="controls">
+    <button class="btn" id="bHint">提示<span class="badge" id="nHint">3</span></button>
+    <button class="btn" id="bShuf">重排<span class="badge" id="nShuf">3</span></button>
+    <button class="btn blue" id="bPause">暂停</button>
+    <button class="btn blue" id="bSfx">音效</button>
+    <button class="btn blue" id="bMus">音乐</button>
+  </div>
+</div>
+
+<script>
+(()=>{
+const ICONS=['🍎','🍊','🍋','🍇','🍉','🍓','🍒','🍑','🍍','🥝','🍌','🥥','🍐','🥕','🌽','🍄',
+  '🐼','🐸','🐵','🐶','🐱','🐰','🦊','🐻','🐯','🐨','🐷','🐮','🐔','🐧','🐙','🦋','🌻','⭐','🎈','🍭'];
+const MODES=[['none','经典'],['down','下落'],['up','上浮'],['left','左靠'],['right','右靠']];
+const DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
+const $=id=>document.getElementById(id);
+const board=$('board'),ov=$('ov'),wrap=$('wrap');
+
+let R,C,H,W,grid,cell=40,level=1,score=0,timeLeft=0,timeMax=1,hints=3,shufs=3;
+let sel=null,busy=false,paused=false,running=false,combo=0,lastMatch=0,uid=0,mode='none',lastTick=0,hintTimer=0;
+const els=new Map();
+let best=0; try{best=+localStorage.getItem('llk_best')||0}catch(e){}
+
+/* ---------- audio (all synthesized) ---------- */
+let ac=null,master,musicBus,sfxOn=true,musOn=true,musTimer=null,musStep=0,musNext=0;
+function initAudio(){
+  if(ac){ if(ac.state==='suspended') ac.resume(); return; }
+  try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; }
+  master=ac.createGain(); master.gain.value=.55; master.connect(ac.destination);
+  musicBus=ac.createGain(); musicBus.gain.value=.16; musicBus.connect(master);
+}
+function tone(f,d,type='sine',v=.25,w=0,to=null,dest){
+  if(!ac) return; const t=ac.currentTime+w, o=ac.createOscillator(), g=ac.createGain();
+  o.type=type; o.frequency.setValueAtTime(f,t); if(to) o.frequency.exponentialRampToValueAtTime(to,t+d);
+  g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(v,t+.006); g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  o.connect(g); g.connect(dest||master); o.start(t); o.stop(t+d+.03);
+}
+function noise(d,v,w=0,freq=4000){
+  if(!ac) return; const t=ac.currentTime+w, n=Math.floor(ac.sampleRate*d), b=ac.createBuffer(1,n,ac.sampleRate), a=b.getChannelData(0);
+  for(let i=0;i<n;i++) a[i]=(Math.random()*2-1)*(1-i/n);
+  const s=ac.createBufferSource(), f=ac.createBiquadFilter(), g=ac.createGain();
+  f.type='highpass'; f.frequency.value=freq; g.gain.value=v; s.buffer=b; s.connect(f); f.connect(g); g.connect(master); s.start(t);
+}
+const sfx=(fn)=>{ if(sfxOn&&ac) fn(); };
+const S={
+  select:()=>sfx(()=>{tone(1175,.06,'triangle',.28);tone(2350,.04,'sine',.08,.01)}),
+  match:(n)=>sfx(()=>{const k=Math.pow(2,Math.min(n-1,6)/12);
+    noise(.12,.12,0,5000); tone(1046*k,.08,'square',.1); tone(1568*k,.12,'square',.1,.06); tone(2093*k,.25,'sine',.18,.11)}),
+  fail:()=>sfx(()=>{tone(240,.15,'square',.1,0,150);tone(160,.12,'square',.08,.08,110)}),
+  hint:()=>sfx(()=>[1568,2093,2637,3136].forEach((f,i)=>tone(f,.3,'sine',.12,i*.05))),
+  shuffle:()=>sfx(()=>{for(let i=0;i<10;i++) tone(500+i*140+(i%2)*90,.06,'triangle',.12,i*.035); noise(.35,.06,0,2500)}),
+  tick:()=>sfx(()=>tone(1900,.03,'square',.05)),
+  win:()=>sfx(()=>[523,659,784,1046,0,784,1046,1318].forEach((f,i)=>f&&tone(f,i===7?.6:.16,'square',.1,i*.11))),
+  lose:()=>sfx(()=>[659,622,587,554,523].forEach((f,i)=>tone(f,i===4?.7:.25,'triangle',.22,i*.22))),
+  start:()=>sfx(()=>[784,988,1175,1568].forEach((f,i)=>tone(f,.12,'square',.09,i*.07))),
+};
+/* background tune: an original bouncy pentatonic loop */
+const NOTE=n=>{if(n==='-')return 0;const m={C:0,D:2,E:4,F:5,G:7,A:9,B:11}[n[0]];return 440*Math.pow(2,(m+12*(+n.slice(-1)+1)-69)/12)};
+const MEL='E5 G5 A5 G5 E5 D5 C5 D5 E5 - G5 E5 D5 - - - A4 C5 D5 E5 G5 E5 D5 C5 D5 - E5 D5 C5 - - - E5 G5 A5 C6 A5 G5 E5 G5 A5 - G5 E5 G5 - - - C6 A5 G5 E5 D5 E5 G5 E5 D5 - C5 D5 C5 - - -'.split(' ');
+const BAS='C3 G3 C3 G3 A2 E3 A2 E3 F2 C3 F2 C3 G2 D3 G2 D3'.split(' ');
+const STEP=.19;
+function musicLoop(){
+  if(!ac||!musOn||!running||paused) return;
+  if(musNext<ac.currentTime) musNext=ac.currentTime+.05;
+  while(musNext<ac.currentTime+.25){
+    const w=musNext-ac.currentTime, m=NOTE(MEL[musStep%MEL.length]);
+    if(m) tone(m,STEP*.9,'square',.5,w,null,musicBus);
+    if(musStep%2===0){ const b=NOTE(BAS[(musStep/2)%BAS.length]); tone(b,STEP*1.6,'triangle',.9,w,null,musicBus); }
+    if(musStep%4===2) { /* soft offbeat tick */ tone(3000,.02,'square',.15,w,null,musicBus); }
+    musStep++; musNext+=STEP;
+  }
+}
+setInterval(musicLoop,60);
+
+/* ---------- board logic ---------- */
+const shuffleArr=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+
+function findPath(a,b){
+  const key=(r,c)=>r*W+c, prev=new Map([[key(a.r,a.c),null]]);
+  let frontier=[a];
+  for(let seg=0;seg<3;seg++){
+    const next=[];
+    for(const p of frontier) for(const [dr,dc] of DIRS){
+      let r=p.r+dr,c=p.c+dc;
+      while(r>=0&&r<H&&c>=0&&c<W){
+        if(r===b.r&&c===b.c){ const path=[b]; let q=p; while(q){path.push(q); q=prev.get(key(q.r,q.c));} return path; }
+        if(grid[r][c]) break;
+        const k=key(r,c);
+        if(!prev.has(k)){ prev.set(k,p); next.push({r,c}); }
+        r+=dr;c+=dc;
+      }
+    }
+    frontier=next;
+  }
+  return null;
+}
+function tilesList(){const out=[];for(let r=1;r<=R;r++)for(let c=1;c<=C;c++)if(grid[r][c])out.push({r,c,t:grid[r][c]});return out}
+function findAnyPair(){
+  const by={}; for(const p of tilesList()) (by[p.t.k]=by[p.t.k]||[]).push(p);
+  for(const k in by){const g=by[k]; for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++){ if(findPath(g[i],g[j])) return [g[i],g[j]]; }}
+  return null;
+}
+function reshuffle(){
+  const ps=tilesList(); if(!ps.length) return;
+  for(let tries=0;tries<60;tries++){
+    const ts=shuffleArr(ps.map(p=>p.t)); ps.forEach((p,i)=>grid[p.r][p.c]=ts[i]);
+    if(findAnyPair()) return;
+  }
+}
+function gravity(){
+  if(mode==='none') return;
+  if(mode==='down'||mode==='up'){
+    for(let c=1;c<=C;c++){ const col=[]; for(let r=1;r<=R;r++){ if(grid[r][c]) col.push(grid[r][c]); grid[r][c]=null; }
+      if(mode==='down'){ let r=R; for(let i=col.length-1;i>=0;i--) grid[r--][c]=col[i]; } else { let r=1; for(const t of col) grid[r++][c]=t; } }
+  } else {
+    for(let r=1;r<=R;r++){ const row=[]; for(let c=1;c<=C;c++){ if(grid[r][c]) row.push(grid[r][c]); grid[r][c]=null; }
+      if(mode==='right'){ let c=C; for(let i=row.length-1;i>=0;i--) grid[r][c--]=row[i]; } else { let c=1; for(const t of row) grid[r][c++]=t; } }
+  }
+}
+
+/* ---------- rendering ---------- */
+function layout(){
+  const aw=wrap.clientWidth, ah=wrap.clientHeight;
+  cell=Math.max(22,Math.floor(Math.min(aw/W,ah/H)));
+  board.style.setProperty('--cell',cell+'px');
+  board.style.width=W*cell+'px'; board.style.height=H*cell+'px';
+  render();
+}
+function render(){
+  for(let r=0;r<H;r++)for(let c=0;c<W;c++){const t=grid[r][c]; if(!t) continue; const el=els.get(t.id); if(!el) continue;
+    el.style.left=c*cell+2+'px'; el.style.top=r*cell+2+'px'; }
+}
+function build(){
+  board.innerHTML='<svg class="lines" id="svg"></svg>'; els.clear();
+  for(const p of tilesList()){
+    const el=document.createElement('div'); el.className='tile'; el.tabIndex=0; el.setAttribute('role','button');
+    el.innerHTML='<span>'+p.t.k+'</span>'; el.dataset.id=p.t.id;
+    el.addEventListener('pointerdown',e=>{e.preventDefault();clickTile(p.t.id)});
+    el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();clickTile(p.t.id)}});
+    board.appendChild(el); els.set(p.t.id,el);
+  }
+}
+function posOf(id){for(let r=1;r<=R;r++)for(let c=1;c<=C;c++)if(grid[r][c]&&grid[r][c].id===id)return{r,c};return null}
+function drawLine(path){
+  const svg=$('svg'); const pts=path.map(p=>((p.c+.5)*cell)+','+((p.r+.5)*cell)).join(' ');
+  const w=Math.max(3,cell*.1);
+  svg.innerHTML=`<polyline points="${pts}" stroke="rgba(255,190,40,.45)" stroke-width="${w*3}"/>
+    <polyline points="${pts}" stroke="#fff36b" stroke-width="${w}"/>
+    <polyline points="${pts}" stroke="#ffffff" stroke-width="${w*.35}"/>`;
+  setTimeout(()=>{svg.innerHTML=''},240);
+}
+function burst(p){
+  const x=(p.c+.5)*cell,y=(p.r+.5)*cell;
+  for(let i=0;i<8;i++){const s=document.createElement('div'); s.className='spark'; const a=i/8*Math.PI*2, d=cell*(.6+Math.random()*.5);
+    s.style.left=x-3+'px'; s.style.top=y-3+'px'; s.style.setProperty('--dx',Math.cos(a)*d+'px'); s.style.setProperty('--dy',Math.sin(a)*d+'px');
+    board.appendChild(s); setTimeout(()=>s.remove(),520);}
+}
+function floatText(txt,p){
+  const f=document.createElement('div'); f.className='float'; f.textContent=txt;
+  f.style.left=(p.c+.5)*cell+'px'; f.style.top=(p.r+.5)*cell+'px'; board.appendChild(f); setTimeout(()=>f.remove(),920);
+}
+function hud(){
+  $('lv').textContent=level; $('sc').textContent=score; $('md').textContent=MODES.find(m=>m[0]===mode)[1];
+  $('nHint').textContent=hints; $('nShuf').textContent=shufs;
+  $('bHint').disabled=!hints; $('bShuf').disabled=!shufs;
+}
+function clearHint(){clearTimeout(hintTimer); els.forEach(e=>e.classList.remove('hint'))}
+
+/* ---------- play ---------- */
+function clickTile(id){
+  if(!running||paused||busy) return;
+  const p=posOf(id); if(!p) return;
+  const el=els.get(id);
+  if(!sel){ sel=p; el.classList.add('sel'); S.select(); return; }
+  const sid=grid[sel.r][sel.c].id;
+  if(sid===id){ el.classList.remove('sel'); sel=null; S.select(); return; }
+  const a=grid[sel.r][sel.c], b=grid[p.r][p.c];
+  if(a.k!==b.k){ els.get(sid).classList.remove('sel'); sel=p; el.classList.add('sel'); S.select(); return; }
+  const path=findPath(sel,p);
+  if(!path){ S.fail(); el.classList.add('shake'); setTimeout(()=>el.classList.remove('shake'),260);
+    els.get(sid).classList.remove('sel'); sel=p; el.classList.add('sel'); return; }
+  // match
+  busy=true; clearHint(); el.classList.add('sel');
+  const now=performance.now(); combo=(now-lastMatch<3000)?combo+1:1; lastMatch=now;
+  const gain=10*combo; score+=gain; timeLeft=Math.min(timeMax,timeLeft+1.5);
+  drawLine(path); S.match(combo);
+  const ea=els.get(sid), eb=el, pa=sel;
+  setTimeout(()=>{
+    ea.classList.add('pop'); eb.classList.add('pop'); burst(pa); burst(p);
+    floatText(combo>1?`+${gain} 连击×${combo}`:`+${gain}`,p);
+    grid[pa.r][pa.c]=null; grid[p.r][p.c]=null; sel=null;
+    setTimeout(()=>{ea.remove();eb.remove();els.delete(a.id);els.delete(b.id)},330);
+    gravity(); render(); hud();
+    if(!tilesList().length){ busy=false; levelClear(); return; }
+    setTimeout(()=>{ if(!findAnyPair()){ reshuffle(); S.shuffle(); render(); floatText('无解，自动重排',{r:H/2-.5,c:W/2-.5}); } busy=false; }, mode==='none'?0:300);
+  },150);
+}
+function useHint(){
+  if(!running||paused||busy||!hints) return; initAudio();
+  const pr=findAnyPair(); if(!pr) return;
+  hints--; hud(); clearHint(); S.hint();
+  pr.forEach(p=>els.get(grid[p.r][p.c].id).classList.add('hint'));
+  hintTimer=setTimeout(clearHint,4000);
+}
+function useShuffle(){
+  if(!running||paused||busy||!shufs) return; initAudio();
+  shufs--; clearHint(); if(sel){ const t=grid[sel.r][sel.c]; t&&els.get(t.id).classList.remove('sel'); sel=null; }
+  reshuffle(); S.shuffle(); render(); hud();
+}
+
+function startLevel(){
+  const portrait=wrap.clientWidth<wrap.clientHeight*1.05;
+  if(portrait){R=10;C=7}else{R=8;C=14}
+  H=R+2;W=C+2; mode=MODES[(level-1)%MODES.length][0];
+  const n=R*C, kinds=Math.min(ICONS.length,Math.floor(n/4)+(level-1)*2);
+  const pool=shuffleArr(ICONS.slice()).slice(0,kinds), list=[];
+  for(let i=0;i<n/2;i++){const k=pool[i%kinds]; list.push(k,k);}
+  shuffleArr(list);
+  grid=Array.from({length:H},()=>Array(W).fill(null));
+  let i=0; for(let r=1;r<=R;r++)for(let c=1;c<=C;c++) grid[r][c]={id:++uid,k:list[i++]};
+  if(!findAnyPair()) reshuffle();
+  timeMax=Math.max(120,280-(level-1)*20); timeLeft=timeMax;
+  sel=null; busy=false; combo=0; paused=false;
+  build(); layout(); hud(); running=true; lastTick=performance.now(); hideOv();
+  $('bPause').textContent='暂停';
+}
+function levelClear(){
+  running=false; const bonus=Math.round(timeLeft)*5; score+=bonus; hud(); S.win();
+  if(score>best){best=score; try{localStorage.setItem('llk_best',best)}catch(e){}}
+  showOv(`<h2>过关！</h2><div class="big">时间奖励 +${bonus}</div><p>总分 ${score} · 下一关玩法：${MODES[level%MODES.length][1]}<br>额外获得提示 ×1、重排 ×1</p><button class="btn" id="go">下一关</button>`,
+    ()=>{level++;hints++;shufs++;startLevel()});
+}
+function gameOver(){
+  running=false; S.lose(); clearHint();
+  if(score>best){best=score; try{localStorage.setItem('llk_best',best)}catch(e){}}
+  showOv(`<h2>时间到</h2><div class="big">得分 ${score}</div><p>第 ${level} 关 · 最高分 ${best}</p><button class="btn" id="go">再来一局</button>`,
+    ()=>{level=1;score=0;hints=3;shufs=3;startLevel()});
+}
+function showOv(html,onGo){ ov.innerHTML='<div class="card">'+html+'</div>'; ov.hidden=false;
+  $('go').addEventListener('click',()=>{initAudio();S.start();onGo()}); }
+function hideOv(){ ov.hidden=true; ov.innerHTML=''; }
+function togglePause(){
+  if(!running) return; initAudio(); paused=!paused; $('bPause').textContent=paused?'继续':'暂停';
+  if(paused){ ov.innerHTML='<div class="card"><h2>暂停中</h2><p>棋盘已隐藏，点继续回到游戏。</p><button class="btn" id="go">继续</button></div>'; ov.hidden=false;
+    $('go').addEventListener('click',togglePause); }
+  else { hideOv(); lastTick=performance.now(); }
+}
+
+/* timer */
+let lastSec=-1;
+function frame(now){
+  if(running&&!paused){
+    timeLeft-=(now-lastTick)/1000;
+    if(timeLeft<=0){ timeLeft=0; gameOver(); }
+    const s=Math.ceil(timeLeft); if(s!==lastSec){ lastSec=s; if(s<=10&&s>0) S.tick(); }
+  }
+  lastTick=now;
+  if(grid){
+    const f=timeLeft/timeMax; $('tf').style.transform=`scaleX(${f})`;
+    $('tf').style.setProperty('--tfill', f>.5?'#3fd46a':f>.2?'#ffc23a':'#ff4b3a');
+    $('tt').textContent=Math.ceil(timeLeft)+'s'; $('tb').classList.toggle('low',f<=.2&&running);
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* controls */
+$('bHint').onclick=useHint; $('bShuf').onclick=useShuffle; $('bPause').onclick=togglePause;
+$('bSfx').onclick=()=>{initAudio();sfxOn=!sfxOn;$('bSfx').classList.toggle('off',!sfxOn);S.select()};
+$('bMus').onclick=()=>{initAudio();musOn=!musOn;$('bMus').classList.toggle('off',!musOn)};
+addEventListener('resize',()=>{ if(grid) layout(); });
+addEventListener('keydown',e=>{ if(e.key==='h'||e.key==='H') useHint(); else if(e.key==='r'||e.key==='R') useShuffle(); else if(e.key==='p'||e.key==='P'||e.key==='Escape') togglePause(); });
+
+/* first screen: a playable board behind the start card */
+startLevel(); running=false;
+showOv(`<h2>果果连连看</h2><div class="demo">🍓🐼🍉🐸</div>
+  <p>点两个相同的图案，能用不超过两个拐弯的线连起来就消除。3 秒内连续消除有连击加分，每关玩法会变：下落、上浮、左靠、右靠。<br>快捷键：H 提示 · R 重排 · P 暂停</p>
+  <button class="btn" id="go">开始游戏</button>`, ()=>{ initAudio(); startLevel(); });
+})();
+</script>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>果果连连看</title>
+  <meta name="theme-color" content="#0a1f4a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/tiles/strawberry.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@400;700&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>果果连连看</h1>
+      <div class="stats">
+        <span class="chip"><span id="lvLabel">关卡</span><b id="lv">1</b></span>
+        <span class="chip">得分<b id="sc">0</b></span>
+        <span class="chip mode">玩法<b id="md">经典</b></span>
+      </div>
+      <div class="timebar" id="tb">
+        <div class="track"><div class="fill" id="tf"></div></div>
+        <span class="t" id="tt">0</span>
+      </div>
+    </header>
+
+    <div class="wrap" id="wrap">
+      <div class="board" id="board"></div>
+      <div class="overlay" id="ov"></div>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="bHint">提示<span class="badge" id="nHint">3</span></button>
+      <button class="btn" id="bShuf">重排<span class="badge" id="nShuf">3</span></button>
+      <button class="btn bomb" id="bBomb">炸弹<span class="badge" id="nBomb">1</span></button>
+      <button class="btn blue" id="bPause">暂停</button>
+      <button class="btn blue" id="bSfx">音效</button>
+      <button class="btn blue" id="bMus">音乐</button>
+    </div>
+  </div>
+
+  <!-- 普通脚本（非 module），保证双击 file:// 打开也能运行 -->
+  <script src="js/assets.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+  <script>
+    // 离线缓存只在 http(s) 下可用；双击 file:// 打开时跳过
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    }
+  </script>
+</body>
+</html>
