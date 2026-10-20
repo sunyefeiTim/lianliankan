@@ -138,10 +138,11 @@ function thawAll() { for (const p of tilesList()) thaw(p.t); }
 
 /* ---------------- 渲染 ---------------- */
 function layout() {
-  cell = Math.max(22, Math.floor(Math.min(wrap.clientWidth / W, wrap.clientHeight / H)));
+  // 外圈绕线用的那一圈只占半格，省出地方让方块更大
+  cell = Math.max(22, Math.floor(Math.min(wrap.clientWidth / (W - 1), wrap.clientHeight / (H - 1))));
   board.style.setProperty('--cell', cell + 'px');
-  board.style.width = W * cell + 'px';
-  board.style.height = H * cell + 'px';
+  board.style.width = (W - 1) * cell + 'px';
+  board.style.height = (H - 1) * cell + 'px';
   render();
 }
 
@@ -149,8 +150,8 @@ function render() {
   for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
     const t = grid[r][c]; if (!t) continue;
     const el = els.get(t.id); if (!el) continue;
-    el.style.left = c * cell + 2 + 'px';
-    el.style.top = r * cell + 2 + 'px';
+    el.style.left = (c - .5) * cell + 2 + 'px';
+    el.style.top = (r - .5) * cell + 2 + 'px';
   }
 }
 
@@ -182,7 +183,7 @@ function posOf(id) {
 
 function drawLine(path) {
   const svg = $('svg');
-  const pts = path.map(p => ((p.c + .5) * cell) + ',' + ((p.r + .5) * cell)).join(' ');
+  const pts = path.map(p => (p.c * cell) + ',' + (p.r * cell)).join(' ');   // 格子中心 = 下标 × cell（外圈半格）
   const w = Math.max(3, cell * .1);
   svg.innerHTML =
     `<polyline points="${pts}" stroke="rgba(255,190,40,.45)" stroke-width="${w * 3}"/>` +
@@ -192,7 +193,7 @@ function drawLine(path) {
 }
 
 function burst(p, n = 8, color) {
-  const x = (p.c + .5) * cell, y = (p.r + .5) * cell;
+  const x = p.c * cell, y = p.r * cell;
   for (let i = 0; i < n; i++) {
     const s = document.createElement('div'); s.className = 'spark';
     if (color) s.style.setProperty('--spark', color);
@@ -205,7 +206,7 @@ function burst(p, n = 8, color) {
 
 function floatText(txt, p) {
   const f = document.createElement('div'); f.className = 'float'; f.textContent = txt;
-  f.style.left = (p.c + .5) * cell + 'px'; f.style.top = (p.r + .5) * cell + 'px';
+  f.style.left = p.c * cell + 'px'; f.style.top = p.r * cell + 'px';
   board.appendChild(f); setTimeout(() => f.remove(), 920);
 }
 
@@ -338,8 +339,11 @@ function useBomb() {
 
 /* ---------------- 关卡流程 ---------------- */
 function setupBoard() {
-  const portrait = wrap.clientWidth < wrap.clientHeight * 1.05;
-  if (portrait) { R = 10; C = 7; } else { R = 8; C = 14; }
+  // 横屏 8×14；竖屏在 10×7 和 12×6 里挑方块能显示得更大的那种（细长的手机屏用 12×6）
+  const ww = wrap.clientWidth, wh = wrap.clientHeight;
+  if (ww >= wh * 1.05) { R = 8; C = 14; }
+  else [[R, C]] = [[10, 7], [12, 6]].sort((a, b) =>
+    Math.min(ww / (b[1] + 1), wh / (b[0] + 1)) - Math.min(ww / (a[1] + 1), wh / (a[0] + 1)));
   H = R + 2; W = C + 2;
   mode = MODES[(level - 1) % MODES.length][0];
 

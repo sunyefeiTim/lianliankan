@@ -49,7 +49,7 @@ self.addEventListener('fetch', e => {
 
   // 本机开发时总是取最新文件，改了代码刷新就能看到
   if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
-    e.respondWith(fetch(req).catch(() => caches.match(req.url, { ignoreSearch: true })));
+    e.respondWith(fetch(req, { cache: 'no-cache' }).catch(() => caches.match(req.url, { ignoreSearch: true })));
     return;
   }
 
@@ -58,7 +58,7 @@ self.addEventListener('fetch', e => {
   const isCode = /(\/|\.html|\.js|\.css|\.webmanifest)$/.test(url.pathname);
   e.respondWith(caches.match(req.url, { ignoreSearch: true }).then(hit => {
     if (hit && !isCode) return hit;
-    const net = fetch(req.url).then(r => {
+    const net = fetch(req.url, { cache: 'no-cache' }).then(r => {   // no-cache：向服务器确认是不是最新
       if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(req.url, copy)); }
       return r;
     });
